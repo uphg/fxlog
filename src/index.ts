@@ -6,7 +6,7 @@ import path from 'node:path';
 
 const defaultConfig = {
   scope: 'fxlog',
-  presets: ['filename', 'date', 'datetime'],
+  presets: ['filename', 'datetime'],
   colorScope: 'all',
   underline: ['scope', 'label', 'message', 'prefix', 'suffix'],
   uppercase: ['label'],
@@ -42,9 +42,7 @@ const defaultConfig = {
 test()
 
 function test() {
-  const logger = createLogger({
-    prefix: ['hi', 'hello']
-  })
+  const logger = createLogger()
   logger.log('通用日志')
   logger.success('成功消息')
   logger.info('一般信息')
@@ -83,7 +81,7 @@ function createLogger(userConfig: LoggerConfig = {}) {
     
     // 处理配置的前缀
     config.presets?.forEach(item => {
-      let value = '';
+      let value = null;
       switch (item) {
         case 'date':
           value = `[${formatDate()}]`;
@@ -92,7 +90,8 @@ function createLogger(userConfig: LoggerConfig = {}) {
           value = `[${formatDateTime()}]`;
           break;
         case 'filename':
-          value = `[${getFilename()}]`;
+          const filename = getFilename()
+          value = filename ? `[${getFilename()}]` : null;
           break;
       }
       if (value && shouldApplyStyle('prefix', config)) {
@@ -293,7 +292,7 @@ function getFilename(): string {
   const callers = stack.map((frame: any) => frame.getFileName());
   const firstExternal = callers.find((file: string) => file !== callers[0]);
   
-  return firstExternal ? path.basename(firstExternal) : 'anonymous';
+  return firstExternal ? path.basename(firstExternal) : null;
 }
 
 function shouldApplyStyle(
