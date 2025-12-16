@@ -1,10 +1,11 @@
 // types.ts
 import { mainSymbols } from 'figures';
-import chalk, { Chalk } from 'chalk';
+
+type defaultColor = 'green' | 'blue' | 'yellowBright' | 'red' | null
 
 export interface LogTypeConfig {
   badge: string | null;
-  color: keyof typeof chalk | null;
+  color: defaultColor;
   label: string;
   logLevel?: LogLevel;
 }
@@ -25,20 +26,24 @@ export interface LoggerConfig {
 
 export type LogLevel = 'info' | 'debug' | 'warn' | 'error' | 'timer';
 
+export type LogArgument = string | number | boolean | object | null | undefined;
+
+export interface ExtendedLoggerConfig extends LoggerConfig {
+  types: Record<string, LogTypeConfig>;
+}
+
 export interface Logger {
-  log: (...args: any[]) => void;
-  info: (...args: any[]) => void;
-  success: (...args: any[]) => void;
-  warn: (...args: any[]) => void;
-  error: (...args: any[]) => void;
+  log: (...args: LogArgument[]) => void;
+  info: (...args: LogArgument[]) => void;
+  success: (...args: LogArgument[]) => void;
+  warn: (...args: LogArgument[]) => void;
+  error: (...args: LogArgument[]) => void;
   time: (label?: string) => string;
   timeEnd: (label?: string) => TimerResult | undefined;
   scope: (...scopes: string[]) => Logger;
   unscope: () => Logger;
   disable: () => void;
   enable: () => void;
-  addSecrets: (secrets: string[]) => void;
-  clearSecrets: () => void;
 }
 
 export interface TimerResult {

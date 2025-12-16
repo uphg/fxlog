@@ -1,10 +1,10 @@
 import { mainSymbols } from 'figures'
 import chalk from 'chalk';
-import type { Logger, LoggerConfig, LogLevel, TimerResult } from './types';
+import type { Logger, LoggerConfig, LogLevel, TimerResult, LogArgument } from './types';
 import { inspect } from 'node:util';
 import path from 'node:path';
 
-const defaultConfig = {
+const defaultConfig: LoggerConfig = {
   scope: 'fxlog',
   presets: ['filename', 'datetime'],
   colorScope: 'all',
@@ -37,7 +37,7 @@ const defaultConfig = {
       label: 'error'
     },
   }
-} as const
+}
 
 test()
 
@@ -51,7 +51,7 @@ function test() {
 }
 
 function createLogger(userConfig: LoggerConfig = {}) {
-   // 合并配置
+  // 合并配置
   const config = {
     ...defaultConfig,
     ...userConfig,
@@ -61,11 +61,11 @@ function createLogger(userConfig: LoggerConfig = {}) {
     }
   };
 
-  let currentScope: string | string[] = config.scope;
+  const currentScope: string | string[] | undefined = config.scope;
   let isDisabled = config.disabled || false;
   const timers = new Map<string, number>();
 
-    // 计算最长的 label
+  // 计算最长的 label
   const longestLabel = Object.values(config.types).reduce((longest, type) => type.label.length > longest.length ? type.label : longest, '')
 
   // 构建前缀
@@ -89,10 +89,11 @@ function createLogger(userConfig: LoggerConfig = {}) {
         case 'datetime':
           value = `[${formatDateTime()}]`;
           break;
-        case 'filename':
+        case 'filename': {
           const filename = getFilename()
           value = filename ? `[${getFilename()}]` : null;
           break;
+        }
       }
       if (value && shouldApplyStyle('prefix', config)) {
         value = chalk.underline(value);
@@ -110,8 +111,8 @@ function createLogger(userConfig: LoggerConfig = {}) {
     return prefixParts;
   }
 
-  function buildMessage(type: string, ...args: any[]): { message: string; logLevel: LogLevel } {
-    const typeConfig = config.types[type];
+  function buildMessage(type: string, ...args: LogArgument[]): { message: string; logLevel: LogLevel } {
+    const typeConfig = config.types[type as keyof typeof config.types]
     if (!typeConfig) throw new Error(`Unknown log type: ${type}`);
     
     const prefixParts = buildPrefix();
@@ -137,13 +138,13 @@ function createLogger(userConfig: LoggerConfig = {}) {
       : paddedLabel;
 
     const coloredLabel = typeConfig.color && chalk[typeConfig.color]
-      ? (chalk[typeConfig.color] as any)(styledPaddedLabel)
+      ? chalk[typeConfig.color](styledPaddedLabel)
       : styledPaddedLabel;
     
     messageParts.push(coloredLabel);
     
     // 构建实际消息
-    let messageContent = args
+    const messageContent = args
       .map(arg => typeof arg === 'string' ? arg : inspect(arg, { colors: false }))
       .join(' ');
     
@@ -167,7 +168,7 @@ function createLogger(userConfig: LoggerConfig = {}) {
   };
 
   function createLogFn(type: string) {
-    return (...args: any[]) => {
+    return (...args: LogArgument[]) => {
       if (isDisabled) return;
       
       const { message } = buildMessage(type, ...args);
@@ -175,7 +176,7 @@ function createLogger(userConfig: LoggerConfig = {}) {
     };
   }
 
-   const logger: any = {
+  const logger: Logger = {
     log: createLogFn('log'),
     info: createLogFn('info'),
     success: createLogFn('success'),
@@ -244,7 +245,7 @@ function createLogger(userConfig: LoggerConfig = {}) {
         ...config,
         scope: newScopes,
         disabled: isDisabled,
-      } as any)
+      } as LoggerConfig)
     },
     
     unscope: (): Logger => {
@@ -252,7 +253,7 @@ function createLogger(userConfig: LoggerConfig = {}) {
         ...config,
         scope: undefined,
         disabled: isDisabled
-      } as any)
+      } as LoggerConfig)
     },
     
     // 控制方法
@@ -262,7 +263,7 @@ function createLogger(userConfig: LoggerConfig = {}) {
     
     enable: () => {
       isDisabled = false;
-    },
+    }
   };
 
   return logger as Logger;
@@ -270,43 +271,40 @@ function createLogger(userConfig: LoggerConfig = {}) {
 
 // 工具函数
 function formatDate(): string {
-  const date = new Date();
-  return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-');
+  const date = new Date()
+  return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-')
 };
 
-function formatDateTime(): string {
+function formatTime(): string {
   const date = new Date();
-  const dateStr = formatDate();
-  const timeStr = [date.getHours(), date.getMinutes(), date.getSeconds()]
-    .map(n => n.toString().padStart(2, '0'))
-    .join(':');
-  return `${dateStr} ${timeStr}`;
-};
+  const timeStr = [date.getHours(), date.getMinutes(), date.getSeconds()].map(n => n.toString().padStart(2, '0')).join(':')
+  return timeStr
+}
+
+function formatDateTime(): string {
+  const dateStr = formatDate()
+  const timeStr = formatTime()
+  return `${dateStr} ${timeStr}`
+}
 
 function getFilename(): string {
   const _prepareStackTrace = Error.prepareStackTrace;
   Error.prepareStackTrace = (_, stack) => stack;
-  const stack = new Error().stack as any;
+  const stack = new Error().stack as unknown as NodeJS.CallSite[];
   Error.prepareStackTrace = _prepareStackTrace;
 
-  const callers = stack.map((frame: any) => frame.getFileName());
-  const firstExternal = callers.find((file: string) => file !== callers[0]);
+  const callers = stack.map((frame: NodeJS.CallSite) => frame.getFileName() || '');
+  const firstExternal = callers.find((file: string) => file && file !== callers[0]);
   
-  return firstExternal ? path.basename(firstExternal) : null;
+  return firstExternal ? path.basename(firstExternal) : '';
 }
 
-function shouldApplyStyle(
-  element: 'scope' | 'label' | 'message' | 'prefix' | 'suffix',
-  config: any
-): boolean {
-  const configList = config.underline || [];
+function shouldApplyStyle(element: 'scope' | 'label' | 'message' | 'prefix' | 'suffix', config: Record<string, unknown>): boolean {
+  const configList = config.underline as Array<'scope' | 'label' | 'message' | 'prefix' | 'suffix'> || [];
   return configList.includes(element);
-};
+}
 
-function shouldUppercase(
-  element: 'label' | 'scope',
-  config: any
-): boolean {
-  const configList = config.uppercase || [];
+function shouldUppercase(element: 'label' | 'scope', config: Record<string, unknown>): boolean {
+  const configList = config.uppercase as Array<'label' | 'scope'> || [];
   return configList.includes(element);
-};
+}
