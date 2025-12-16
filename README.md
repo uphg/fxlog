@@ -14,10 +14,10 @@ npm install signale
 
 所有可用的默认类型
 
-- ✖ error：错误报告
-- ℹ info：一般信息
-- ✔ success：成功状态
-- ⚠ warn：警告信息
+- `✘` error：错误报告
+- `ℹ` info：一般信息
+- `✔` success：成功状态
+- `⚠` warn：警告信息
 - log：通用日志
 
 ### 2. 自定义类型
