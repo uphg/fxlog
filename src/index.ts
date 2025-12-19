@@ -2,13 +2,11 @@ import { mainSymbols } from 'figures'
 import chalk from 'chalk';
 import type { Logger, LoggerConfig, LogLevel, TimerResult, LogArgument } from './types';
 import { inspect } from 'node:util';
-import path from 'node:path';
 
 const defaultConfig: LoggerConfig = {
   scope: 'fxlog',
-  presets: ['filename', 'datetime'],
+  presets: ['date', 'label', 'badge'],
   colorScope: 'all',
-  underline: ['scope', 'label', 'message', 'prefix', 'suffix'],
   uppercase: ['label'],
   types: {
     log: {
@@ -28,7 +26,7 @@ const defaultConfig: LoggerConfig = {
     },
     warn: {
       badge: mainSymbols.warning,
-      color: 'yellowBright',
+      color: 'yellow',
       label: 'warn'
     },
     error: {
@@ -39,19 +37,7 @@ const defaultConfig: LoggerConfig = {
   }
 }
 
-test()
-
-function test() {
-  const logger = createLogger()
-  logger.log('通用日志')
-  logger.success('成功消息')
-  logger.info('一般信息')
-  logger.warn('警告信息')
-  logger.error('错误报告')
-}
-
-function createLogger(userConfig: LoggerConfig = {}) {
-  // 合并配置
+export function createLogger(userConfig: LoggerConfig = {}) {
   const config = {
     ...defaultConfig,
     ...userConfig,
@@ -67,9 +53,10 @@ function createLogger(userConfig: LoggerConfig = {}) {
 
   // 计算最长的 label
   const longestLabel = Object.values(config.types).reduce((longest, type) => type.label.length > longest.length ? type.label : longest, '')
+  
+  const longestBadgeAndScope = Object.values(config.types).reduce((longest, type) => ((type.badge?.length ?? 0) + (config.scope?.length ?? 0)) > longest.length ? type.label : longest, '')
 
-  // 构建前缀
-  function buildPrefix() {
+  function buildPrefix(type: string) {
     const prefixParts: string[] = [];
 
     const userPrefix = typeof config.prefix == 'function' ? config.prefix() : config.prefix 
@@ -78,21 +65,36 @@ function createLogger(userConfig: LoggerConfig = {}) {
       const values = Array.isArray(userPrefix) ? userPrefix : [userPrefix]
       prefixParts.push(...values)
     }
-    
-    // 处理配置的前缀
+    const typeConfig = config.types[type as keyof typeof config.types]
     config.presets?.forEach(item => {
       let value = null;
+      
       switch (item) {
         case 'date':
           value = `[${formatDate()}]`;
-          break;
-        case 'datetime':
-          value = `[${formatDateTime()}]`;
-          break;
-        case 'filename': {
-          const filename = getFilename()
-          value = filename ? `[${getFilename()}]` : null;
-          break;
+          break
+        case 'badge': {
+          value = config.colorScope === 'label-badge' && typeConfig.color
+            ? chalk[typeConfig.color](typeConfig.badge)
+            : typeConfig.badge
+          break 
+        }
+        case 'label': {
+          let label = typeConfig.label;
+          if (shouldUppercase('label', config)) {
+            label = label.toUpperCase();
+          }
+          const paddedLabel = label.padEnd(longestLabel.length);
+          const styledPaddedLabel = shouldApplyStyle('label', config)
+            ? chalk.underline(paddedLabel)
+            : paddedLabel
+
+          value = (config.colorScope === 'all' || config.colorScope === 'none')
+            ? styledPaddedLabel
+            : (typeConfig.color && chalk[typeConfig.color]
+              ? chalk[typeConfig.color](styledPaddedLabel)
+              : styledPaddedLabel)
+          break        
         }
       }
       if (value && shouldApplyStyle('prefix', config)) {
@@ -101,11 +103,12 @@ function createLogger(userConfig: LoggerConfig = {}) {
       if (value) prefixParts.push(value);
     });
 
-    // 处理 scope
     if (currentScope) {
       const scopes = Array.isArray(currentScope) ? currentScope : [currentScope];
       const scopeStr = scopes.map(s => `[${shouldUppercase('scope', config) ? s.toUpperCase() : s}]`).join(' ');
-      prefixParts.push(shouldApplyStyle('scope', config) ? chalk.underline(scopeStr) : scopeStr);
+      const paddedScope = config.presets?.includes('badge') && !typeConfig?.badge ? scopeStr.padStart(longestBadgeAndScope.length + 2) : scopeStr
+
+      prefixParts.push(shouldApplyStyle('scope', config) ? chalk.underline(paddedScope) : paddedScope);
     }
     
     return prefixParts;
@@ -115,54 +118,47 @@ function createLogger(userConfig: LoggerConfig = {}) {
     const typeConfig = config.types[type as keyof typeof config.types]
     if (!typeConfig) throw new Error(`Unknown log type: ${type}`);
     
-    const prefixParts = buildPrefix();
+    const prefixParts = buildPrefix(type);
     const messageParts: string[] = [];
     
-    // 添加前缀
     if (prefixParts.length > 0) {
       messageParts.push(prefixParts.join(' '));
     }
 
-    // 处理 label
-    let label = typeConfig.label;
-    if (shouldUppercase('label', config)) {
-      label = label.toUpperCase();
-    }
-    
-    const badgeAndlabel = typeConfig.badge ?  `${typeConfig.badge} ${label}` : label
-      
-    // 对齐 label
-    const paddedLabel = badgeAndlabel.padEnd(longestLabel.length + 2);
-    const styledPaddedLabel = shouldApplyStyle('label', config)
-      ? chalk.underline(paddedLabel)
-      : paddedLabel;
+    // let label = typeConfig.label;
+    // if (shouldUppercase('label', config)) {
+    //   label = label.toUpperCase();
+    // }
 
-    const coloredLabel = typeConfig.color && chalk[typeConfig.color]
-      ? chalk[typeConfig.color](styledPaddedLabel)
-      : styledPaddedLabel;
+    // const styledPaddedLabel = shouldApplyStyle('label', config)
+    //   ? chalk.underline(label)
+    //   : label
+
+    // const coloredLabel = (config.colorScope === 'all' || config.colorScope === 'none')
+    //   ? styledPaddedLabel
+    //   : (typeConfig.color && chalk[typeConfig.color]
+    //     ? chalk[typeConfig.color](styledPaddedLabel)
+    //     : styledPaddedLabel)
+        
+    // messageParts.push(coloredLabel);
     
-    messageParts.push(coloredLabel);
-    
-    // 构建实际消息
     const messageContent = args
       .map(arg => typeof arg === 'string' ? arg : inspect(arg, { colors: false }))
       .join(' ');
     
-    // 应用消息样式
     const styledMessage = shouldApplyStyle('message', config)
       ? chalk.underline(messageContent)
       : messageContent;
     
     messageParts.push(styledMessage);
     
-    // 应用颜色
     const finalMessage = messageParts.join(' ');
-    // const coloredMessage = typeConfig.color && chalk[typeConfig.color]
-    //   ? (chalk[typeConfig.color] as any)(finalMessage)
-    //   : finalMessage;
+    const coloredMessage = config.colorScope === 'all' ? (typeConfig.color && chalk[typeConfig.color]
+      ? chalk[typeConfig.color](finalMessage)
+      : finalMessage) : finalMessage
     
     return {
-      message: finalMessage,
+      message: coloredMessage,
       logLevel: typeConfig.logLevel || 'info'
     };
   };
@@ -271,32 +267,18 @@ function createLogger(userConfig: LoggerConfig = {}) {
 
 // 工具函数
 function formatDate(): string {
-  const date = new Date()
-  return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-')
-};
+  const now = new Date()
 
-function formatTime(): string {
-  const date = new Date();
-  const timeStr = [date.getHours(), date.getMinutes(), date.getSeconds()].map(n => n.toString().padStart(2, '0')).join(':')
-  return timeStr
-}
-
-function formatDateTime(): string {
-  const dateStr = formatDate()
-  const timeStr = formatTime()
-  return `${dateStr} ${timeStr}`
-}
-
-function getFilename(): string {
-  const _prepareStackTrace = Error.prepareStackTrace;
-  Error.prepareStackTrace = (_, stack) => stack;
-  const stack = new Error().stack as unknown as NodeJS.CallSite[];
-  Error.prepareStackTrace = _prepareStackTrace;
-
-  const callers = stack.map((frame: NodeJS.CallSite) => frame.getFileName() || '');
-  const firstExternal = callers.find((file: string) => file && file !== callers[0]);
-  
-  return firstExternal ? path.basename(firstExternal) : '';
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+    
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+    
+  const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`
 }
 
 function shouldApplyStyle(element: 'scope' | 'label' | 'message' | 'prefix' | 'suffix', config: Record<string, unknown>): boolean {
