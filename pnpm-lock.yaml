@@ -9,11 +9,14 @@ importers:
   .:
     dependencies:
       chalk:
-        specifier: ^5.6.2
+        specifier: 5.6.2
         version: 5.6.2
       figures:
-        specifier: ^6.1.0
+        specifier: 6.1.0
         version: 6.1.0
+      xfunc:
+        specifier: 0.7.0
+        version: 0.7.0
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.2
@@ -1317,6 +1320,9 @@ packages:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
     engines: {node: '>=0.10.0'}
 
+  xfunc@0.7.0:
+    resolution: {integrity: sha512-ah79xje9DjQ1RpeOH1USL0WHXZ2NFn09FgQgh92S4Zejhz+ygDM53oLCNiyWh73c+v7umGh84g95pyiEuQCD0w==}
+
   yaml@2.8.2:
     resolution: {integrity: sha512-mplynKqc1C2hTVYxd0PU2xQAc22TI1vShAYGksCCfxbn/dFwnHTNi1bvYsBTkhdUNtGIf5xNOg938rrSSYvS9A==}
     engines: {node: '>= 14.6'}
@@ -2471,6 +2477,8 @@ snapshots:
       stackback: 0.0.2
 
   word-wrap@1.2.5: {}
+
+  xfunc@0.7.0: {}
 
   yaml@2.8.2: {}
 

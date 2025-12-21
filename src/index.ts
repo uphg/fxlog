@@ -5,7 +5,7 @@ import { inspect } from 'node:util';
 
 const defaultConfig: LoggerConfig = {
   scope: 'fxlog',
-  presets: ['date', 'label', 'badge'],
+  presets: ['date', 'badge', 'scope'],
   colorScope: 'all',
   uppercase: ['label'],
   types: {
@@ -15,27 +15,51 @@ const defaultConfig: LoggerConfig = {
       label: 'log',
     },
     success: {
-      badge: mainSymbols.tick ,
+      badge: '(✓)' ,
       color: 'green',
       label: 'success'
     },
     info: {
-      badge: mainSymbols.info,
+      badge: '(i)',
       color: 'blue',
       label: 'info'
     },
     warn: {
-      badge: mainSymbols.warning,
+      badge: '(!)',
       color: 'yellow',
       label: 'warn'
     },
     error: {
-      badge: mainSymbols.cross,
+      badge: '(×)',
       color: 'red',
       label: 'error'
     },
+    // time: {
+    //   badge: '▶',
+    //   color:  'green',
+    //   label: 'timer'
+    // },
+    // timeEnd: {
+    //   badge: '■',
+    //   color: 'red',
+    //   label: 'timer'
+    // }
   }
 }
+
+function test() {
+  const logger = createLogger()
+
+  logger.time()
+  logger.log('普通消息')
+  logger.success('[✓]普通消息')
+  logger.info('[i]普通消息')
+  logger.warn('[!]普通消息')
+  logger.error('[×]普通消息')
+  logger.timeEnd()
+}
+
+test()
 
 export function createLogger(userConfig: LoggerConfig = {}) {
   const config = {
@@ -56,7 +80,7 @@ export function createLogger(userConfig: LoggerConfig = {}) {
   
   const longestBadgeAndScope = Object.values(config.types).reduce((longest, type) => ((type.badge?.length ?? 0) + (config.scope?.length ?? 0)) > longest.length ? type.label : longest, '')
 
-  function buildPrefix(type: string) {
+  function buildPrefix(type?: string) {
     const prefixParts: string[] = [];
 
     const userPrefix = typeof config.prefix == 'function' ? config.prefix() : config.prefix 
@@ -74,13 +98,15 @@ export function createLogger(userConfig: LoggerConfig = {}) {
           value = `[${formatDate()}]`;
           break
         case 'badge': {
-          value = config.colorScope === 'label-badge' && typeConfig.color
+          if (!typeConfig?.badge) break
+          value = config.colorScope === 'label-badge' && typeConfig?.color
             ? chalk[typeConfig.color](typeConfig.badge)
             : typeConfig.badge
           break 
         }
         case 'label': {
-          let label = typeConfig.label;
+          let label = typeConfig?.label;
+          if (!label) break
           if (shouldUppercase('label', config)) {
             label = label.toUpperCase();
           }
@@ -151,8 +177,9 @@ export function createLogger(userConfig: LoggerConfig = {}) {
       : messageContent;
     
     messageParts.push(styledMessage);
+    const tryMessageParts = messageParts.filter(item => !!item)
     
-    const finalMessage = messageParts.join(' ');
+    const finalMessage = tryMessageParts.join(' ');
     const coloredMessage = config.colorScope === 'all' ? (typeConfig.color && chalk[typeConfig.color]
       ? chalk[typeConfig.color](finalMessage)
       : finalMessage) : finalMessage
@@ -187,14 +214,15 @@ export function createLogger(userConfig: LoggerConfig = {}) {
       timers.set(timerLabel, Date.now());
       
       const prefixParts = buildPrefix();
-      const messageParts = [...prefixParts];
+      const messages = [
+        ...prefixParts,
+        // '[TIMER]',
+        chalk.green('▶'),
+        chalk.green(timerLabel),
+        'Initialized timer...'
+      ]
       
-      messageParts.push('[TIMER]');
-      messageParts.push(chalk.green('▶'));
-      messageParts.push(chalk.green(timerLabel));
-      messageParts.push('Initialized timer...');
-      
-      console.log(messageParts.join(' '));
+      console.log(messages.join(' '));
       return timerLabel;
     },
     
@@ -215,16 +243,17 @@ export function createLogger(userConfig: LoggerConfig = {}) {
       const span = Date.now() - startTime;
       timers.delete(timerLabel);
       
-      const prefixParts = buildPrefix();
-      const messageParts = [...prefixParts];
+      const prefixParts = buildPrefix('timeEnd');
+      const messages = [
+        ...prefixParts,
+        // '[TIMER]',
+        chalk.red('■'),
+        chalk.red(timerLabel),
+        'Timer run for:',
+        chalk.yellow(span < 1000 ? `${span}ms` : `${(span / 1000).toFixed(2)}s`)
+      ]
       
-      messageParts.push('[TIMER]');
-      messageParts.push(chalk.red('■'));
-      messageParts.push(chalk.red(timerLabel));
-      messageParts.push('Timer run for:');
-      messageParts.push(chalk.yellow(span < 1000 ? `${span}ms` : `${(span / 1000).toFixed(2)}s`));
-      
-      console.log(messageParts.join(' '));
+      console.log(messages.join(' '));
       
       return { label: timerLabel, span };
     },
