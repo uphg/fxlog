@@ -3,6 +3,8 @@ import type { ColorName } from "chalk";
 // types.ts
 type LogConfigColor = ColorName | null
 
+type LogPrefixType = 'date' | 'scope' | 'badge'
+
 export interface LogTypeConfig {
   badge: string | null;
   color: LogConfigColor;
@@ -13,11 +15,11 @@ export interface LogTypeConfig {
 export interface LoggerConfig {
   scope?: string | string[]
   prefix?: string | string[] | (() => string | string[])
-  presets?: Array<'filename' | 'date' | 'scope' | 'label' | 'badge'>
-  colorScope?: 'all' | 'label-badge' | 'none'
+  presets?: Array<LogPrefixType>
+  colorScope?: 'all' | 'badge' | 'none'
   suffix?: string[]
-  underline?: Array<'filename' | 'date' | 'scope' | 'label' | 'badge'>;
-  uppercase?: Array<'filename' | 'date' | 'scope' | 'label' | 'badge'>
+  underline?: Array<LogPrefixType>;
+  uppercase?: Array<LogPrefixType>
   types?: Record<string, LogTypeConfig>
   disabled?: boolean
   secrets?: string[]
@@ -27,10 +29,6 @@ export interface LoggerConfig {
 export type LogLevel = 'info' | 'debug' | 'warn' | 'error' | 'timer';
 
 export type LogArgument = string | number | boolean | object | null | undefined;
-
-export interface ExtendedLoggerConfig extends LoggerConfig {
-  types: Record<string, LogTypeConfig>;
-}
 
 export interface Logger {
   log: (...args: LogArgument[]) => void;

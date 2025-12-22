@@ -1,13 +1,12 @@
-import { mainSymbols } from 'figures'
-import chalk from 'chalk';
-import type { Logger, LoggerConfig, LogLevel, TimerResult, LogArgument } from './types';
-import { inspect } from 'node:util';
+import chalk from 'chalk'
+import type { Logger, LoggerConfig,  TimerResult, LogArgument } from './types'
+import { inspect } from 'node:util'
+import { isNil, merge } from 'xfunc'
 
 const defaultConfig: LoggerConfig = {
   scope: 'fxlog',
-  presets: ['date', 'badge', 'scope'],
+  presets: ['date', 'scope', 'badge'],
   colorScope: 'all',
-  uppercase: ['label'],
   types: {
     log: {
       badge: null,
@@ -15,35 +14,25 @@ const defaultConfig: LoggerConfig = {
       label: 'log',
     },
     success: {
-      badge: '(✓)' ,
+      badge: '[✓]' ,
       color: 'green',
       label: 'success'
     },
     info: {
-      badge: '(i)',
+      badge: '[i]',
       color: 'blue',
       label: 'info'
     },
     warn: {
-      badge: '(!)',
+      badge: '[!]',
       color: 'yellow',
       label: 'warn'
     },
     error: {
-      badge: '(×)',
+      badge: '[×]',
       color: 'red',
       label: 'error'
-    },
-    // time: {
-    //   badge: '▶',
-    //   color:  'green',
-    //   label: 'timer'
-    // },
-    // timeEnd: {
-    //   badge: '■',
-    //   color: 'red',
-    //   label: 'timer'
-    // }
+    }
   }
 }
 
@@ -52,143 +41,93 @@ function test() {
 
   logger.time()
   logger.log('普通消息')
-  logger.success('[✓]普通消息')
-  logger.info('[i]普通消息')
-  logger.warn('[!]普通消息')
-  logger.error('[×]普通消息')
+  logger.success('普通消息')
+  logger.info('普通消息')
+  logger.warn('普通消息')
+  logger.error('普通消息')
   logger.timeEnd()
 }
 
 test()
 
 export function createLogger(userConfig: LoggerConfig = {}) {
-  const config = {
-    ...defaultConfig,
-    ...userConfig,
-    types: {
-      ...defaultConfig.types,
-      ...userConfig.types
-    }
-  };
-
+  const config = merge({}, defaultConfig, userConfig)
   const currentScope: string | string[] | undefined = config.scope;
+  const timers = new Map<string, number>()
   let isDisabled = config.disabled || false;
-  const timers = new Map<string, number>();
-
-  // 计算最长的 label
-  const longestLabel = Object.values(config.types).reduce((longest, type) => type.label.length > longest.length ? type.label : longest, '')
-  
-  const longestBadgeAndScope = Object.values(config.types).reduce((longest, type) => ((type.badge?.length ?? 0) + (config.scope?.length ?? 0)) > longest.length ? type.label : longest, '')
 
   function buildPrefix(type?: string) {
-    const prefixParts: string[] = [];
+    const prefixParts: string[] = []
+    const typeConfig = config.types![type!]
 
-    const userPrefix = typeof config.prefix == 'function' ? config.prefix() : config.prefix 
-    
-    if (userPrefix?.length) {
-      const values = Array.isArray(userPrefix) ? userPrefix : [userPrefix]
-      prefixParts.push(...values)
-    }
-    const typeConfig = config.types[type as keyof typeof config.types]
-    config.presets?.forEach(item => {
-      let value = null;
-      
-      switch (item) {
-        case 'date':
-          value = `[${formatDate()}]`;
+    config.presets?.forEach((item) => {
+      let value = null
+      switch(item) {
+        case 'date': {
+          const date = formatDate()
+          value = `[${shouldApplyStyle('date', config) ? chalk.underline(date) : date}]`;
           break
+        }
+        case 'scope': {
+          value = `[${shouldApplyStyle('scope', config) ? chalk.underline(currentScope) : currentScope}]`;
+          break
+        }
         case 'badge': {
-          if (!typeConfig?.badge) break
-          value = config.colorScope === 'label-badge' && typeConfig?.color
+          if (!(type && typeConfig?.badge)) break
+          value = config.colorScope === 'badge' && typeConfig?.color
             ? chalk[typeConfig.color](typeConfig.badge)
             : typeConfig.badge
           break 
         }
-        case 'label': {
-          let label = typeConfig?.label;
-          if (!label) break
-          if (shouldUppercase('label', config)) {
-            label = label.toUpperCase();
-          }
-          const paddedLabel = label.padEnd(longestLabel.length);
-          const styledPaddedLabel = shouldApplyStyle('label', config)
-            ? chalk.underline(paddedLabel)
-            : paddedLabel
-
-          value = (config.colorScope === 'all' || config.colorScope === 'none')
-            ? styledPaddedLabel
-            : (typeConfig.color && chalk[typeConfig.color]
-              ? chalk[typeConfig.color](styledPaddedLabel)
-              : styledPaddedLabel)
-          break        
-        }
       }
-      if (value && shouldApplyStyle('prefix', config)) {
-        value = chalk.underline(value);
+
+      const userPrefix = typeof config.prefix == 'function' ? config.prefix() : config.prefix
+
+      if (userPrefix?.length) {
+        const values = Array.isArray(userPrefix) ? userPrefix : [userPrefix]
+        const prefixs = values.map(item => chalk.underline(item))
+        prefixParts.push(...prefixs)
       }
-      if (value) prefixParts.push(value);
-    });
 
-    if (currentScope) {
-      const scopes = Array.isArray(currentScope) ? currentScope : [currentScope];
-      const scopeStr = scopes.map(s => `[${shouldUppercase('scope', config) ? s.toUpperCase() : s}]`).join(' ');
-      const paddedScope = config.presets?.includes('badge') && !typeConfig?.badge ? scopeStr.padStart(longestBadgeAndScope.length + 2) : scopeStr
+      if (!value) return
+      prefixParts.push(value)
+    })
 
-      prefixParts.push(shouldApplyStyle('scope', config) ? chalk.underline(paddedScope) : paddedScope);
-    }
-    
-    return prefixParts;
+    return prefixParts
   }
 
-  function buildMessage(type: string, ...args: LogArgument[]): { message: string; logLevel: LogLevel } {
-    const typeConfig = config.types[type as keyof typeof config.types]
-    if (!typeConfig) throw new Error(`Unknown log type: ${type}`);
-    
+  function buildMessage(type: string, ...args: LogArgument[]) {
+    const typeConfig = config.types![type]
+    if (!typeConfig) throw new Error(`Unknown log type: ${type}`)
+
     const prefixParts = buildPrefix(type);
     const messageParts: string[] = [];
-    
-    if (prefixParts.length > 0) {
-      messageParts.push(prefixParts.join(' '));
+
+    if (prefixParts?.length) {
+      messageParts.push(...prefixParts);
     }
 
-    // let label = typeConfig.label;
-    // if (shouldUppercase('label', config)) {
-    //   label = label.toUpperCase();
-    // }
-
-    // const styledPaddedLabel = shouldApplyStyle('label', config)
-    //   ? chalk.underline(label)
-    //   : label
-
-    // const coloredLabel = (config.colorScope === 'all' || config.colorScope === 'none')
-    //   ? styledPaddedLabel
-    //   : (typeConfig.color && chalk[typeConfig.color]
-    //     ? chalk[typeConfig.color](styledPaddedLabel)
-    //     : styledPaddedLabel)
-        
-    // messageParts.push(coloredLabel);
-    
     const messageContent = args
       .map(arg => typeof arg === 'string' ? arg : inspect(arg, { colors: false }))
       .join(' ');
     
     const styledMessage = shouldApplyStyle('message', config)
       ? chalk.underline(messageContent)
-      : messageContent;
-    
-    messageParts.push(styledMessage);
-    const tryMessageParts = messageParts.filter(item => !!item)
-    
-    const finalMessage = tryMessageParts.join(' ');
+      : messageContent
+
+    messageParts.push(styledMessage)
+
+    const notNullMessageParts = messageParts.filter(item => !!item)
+    const finalMessage = mergeMessage(notNullMessageParts);
     const coloredMessage = config.colorScope === 'all' ? (typeConfig.color && chalk[typeConfig.color]
       ? chalk[typeConfig.color](finalMessage)
       : finalMessage) : finalMessage
-    
+
     return {
       message: coloredMessage,
       logLevel: typeConfig.logLevel || 'info'
     };
-  };
+  }
 
   function createLogFn(type: string) {
     return (...args: LogArgument[]) => {
@@ -198,14 +137,13 @@ export function createLogger(userConfig: LoggerConfig = {}) {
       console.log(message);
     };
   }
-
-  const logger: Logger = {
+  const logger = {
     log: createLogFn('log'),
     info: createLogFn('info'),
     success: createLogFn('success'),
     warn: createLogFn('warn'),
     error: createLogFn('error'),
-    
+
     // Timer 方法
     time: (label?: string): string => {
       if (isDisabled) return '';
@@ -216,49 +154,41 @@ export function createLogger(userConfig: LoggerConfig = {}) {
       const prefixParts = buildPrefix();
       const messages = [
         ...prefixParts,
-        // '[TIMER]',
         chalk.green('▶'),
         chalk.green(timerLabel),
         'Initialized timer...'
       ]
       
-      console.log(messages.join(' '));
+      console.log(mergeMessage(messages));
       return timerLabel;
     },
-    
+
     timeEnd: (label?: string): TimerResult | undefined => {
       if (isDisabled) return undefined;
       
-      let timerLabel = label;
-      if (!timerLabel && timers.size > 0) {
-        const timerKeys = Array.from(timers.keys());
-        timerLabel = timerKeys.find(key => key.startsWith('timer_')) || timerKeys[timerKeys.length - 1];
-      }
+      const timerLabel = getTimeLabel(label, timers)
+      if (!timerLabel) return
       
-      if (!timerLabel || !timers.has(timerLabel)) {
-        return undefined;
+      const startTime = timers.get(timerLabel)
+      if (isNil(startTime)) {
+        console.warn(`Cannot find startTime, timeEnd must be called after the time method`)
+        return
       }
-      
-      const startTime = timers.get(timerLabel)!;
-      const span = Date.now() - startTime;
+      const span = Date.now() - startTime
       timers.delete(timerLabel);
       
       const prefixParts = buildPrefix('timeEnd');
       const messages = [
         ...prefixParts,
-        // '[TIMER]',
         chalk.red('■'),
         chalk.red(timerLabel),
         'Timer run for:',
         chalk.yellow(span < 1000 ? `${span}ms` : `${(span / 1000).toFixed(2)}s`)
       ]
-      
       console.log(messages.join(' '));
-      
       return { label: timerLabel, span };
     },
-    
-    // Scope 方法
+
     scope: (...scopes: string[]): Logger => {
       const newScopes = (Array.isArray(currentScope) 
         ? [...currentScope, ...scopes]
@@ -272,7 +202,7 @@ export function createLogger(userConfig: LoggerConfig = {}) {
         disabled: isDisabled,
       } as LoggerConfig)
     },
-    
+
     unscope: (): Logger => {
       return createLogger({
         ...config,
@@ -280,8 +210,7 @@ export function createLogger(userConfig: LoggerConfig = {}) {
         disabled: isDisabled
       } as LoggerConfig)
     },
-    
-    // 控制方法
+
     disable: () => {
       isDisabled = true;
     },
@@ -289,12 +218,29 @@ export function createLogger(userConfig: LoggerConfig = {}) {
     enable: () => {
       isDisabled = false;
     }
-  };
+  }
 
   return logger as Logger;
 }
 
-// 工具函数
+function mergeMessage(messages: string[]) {
+  return messages.join(' ')
+}
+
+function getTimeLabel(label: string | null | undefined, timers: Map<string, number>) {
+  let timerLabel = label;
+  if (!timerLabel && timers.size > 0) {
+    const timerKeys = Array.from(timers.keys());
+    timerLabel = timerKeys.find(key => key.startsWith('timer_')) || timerKeys[timerKeys.length - 1];
+  }
+      
+  if (!timerLabel || !timers.has(timerLabel)) {
+    return undefined;
+  }
+
+  return timerLabel
+}
+
 function formatDate(): string {
   const now = new Date()
 
@@ -310,12 +256,8 @@ function formatDate(): string {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`
 }
 
-function shouldApplyStyle(element: 'scope' | 'label' | 'message' | 'prefix' | 'suffix', config: Record<string, unknown>): boolean {
-  const configList = config.underline as Array<'scope' | 'label' | 'message' | 'prefix' | 'suffix'> || [];
-  return configList.includes(element);
-}
 
-function shouldUppercase(element: 'label' | 'scope', config: Record<string, unknown>): boolean {
-  const configList = config.uppercase as Array<'label' | 'scope'> || [];
+function shouldApplyStyle(element: 'date' | 'scope' | 'label' | 'message' | 'prefix' | 'suffix', config: Record<string, unknown>): boolean {
+  const configList = config.underline as Array<'date' | 'scope' | 'label' | 'message' | 'prefix' | 'suffix'> || [];
   return configList.includes(element);
 }

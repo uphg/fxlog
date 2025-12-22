@@ -1,7 +1,7 @@
 {
   "name": "fxlog",
   "type": "module",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A starter for creating a TypeScript package.",
   "author": "Author Name <author.name@mail.com>",
   "license": "MIT",
@@ -45,7 +45,6 @@
   },
   "dependencies": {
     "chalk": "5.6.2",
-    "figures": "6.1.0",
     "xfunc": "0.7.0"
   }
 }
