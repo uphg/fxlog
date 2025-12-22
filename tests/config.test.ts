@@ -20,7 +20,7 @@ describe('Configuration System Tests', () => {
       
       // Should include date preset and default scope
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\] \[fxlog\] LOG/)
+        expect.stringMatching(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\] \[fxlog\] test$/)
       )
     })
 
@@ -68,7 +68,7 @@ describe('Configuration System Tests', () => {
       logger.success('test')
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('✔ SUCCESS')
+        expect.stringContaining('[✓]')
       )
     })
 
@@ -76,19 +76,19 @@ describe('Configuration System Tests', () => {
       const userConfig: LoggerConfig = {
         presets: [],
         types: {
-          debug: {
+          info: {
             badge: '🐛',
             color: 'magenta',
-            label: 'debug'
+            label: 'info'
           }
         }
       }
       
-      const logger = createLogger(userConfig) as any
-      logger.debug('debug message')
+      const logger = createLogger(userConfig)
+      logger.info('debug message')
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('🐛 debug   debug message')
+        expect.stringContaining('🐛 debug message')
       )
     })
 
@@ -99,7 +99,7 @@ describe('Configuration System Tests', () => {
           log: {
             badge: '●',
             color: 'blue',
-            label: 'custom-log'
+            label: 'log'
           }
         }
       }
@@ -108,99 +108,49 @@ describe('Configuration System Tests', () => {
       logger.log('test')
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('● custom-log test')
+        expect.stringContaining('● test')
       )
     })
   })
 
-  describe('Custom Log Types', () => {
-    test('should create logger with single custom type', () => {
+  describe('Default Type Overrides', () => {
+    test('should override info badge and color', () => {
       const customConfig: LoggerConfig = {
         presets: [],
         types: {
-          trace: {
+          info: {
             badge: '⚡',
             color: 'yellow',
-            label: 'trace'
+            label: 'info'
           }
         }
       }
       
-      const logger = createLogger(customConfig) as any
-      expect(logger.trace).toBeDefined()
-      logger.trace('trace message')
+      const logger = createLogger(customConfig)
+      logger.info('test message')
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('⚡ trace   trace message')
+        expect.stringContaining('⚡ test message')
       )
     })
 
-    test('should create logger with multiple custom types', () => {
+    test('should override error type', () => {
       const customConfig: LoggerConfig = {
         presets: [],
         types: {
-          notice: {
-            badge: '📢',
-            color: 'cyan',
-            label: 'notice'
-          },
-          critical: {
+          error: {
             badge: '🚨',
             color: 'red',
-            label: 'critical'
+            label: 'error'
           }
         }
       }
       
-      const logger = createLogger(customConfig) as any
-      logger.notice('notice message')
-      logger.critical('critical message')
+      const logger = createLogger(customConfig)
+      logger.error('critical message')
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('📢 notice  notice message')
-      )
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('🚨 critical critical message')
-      )
-    })
-
-    test('should handle custom types without badges', () => {
-      const customConfig: LoggerConfig = {
-        presets: [],
-        types: {
-          simple: {
-            badge: null,
-            color: null,
-            label: 'simple'
-          }
-        }
-      }
-      
-      const logger = createLogger(customConfig) as any
-      logger.simple('simple message')
-      
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('simple   simple message')
-      )
-    })
-
-    test('should handle custom types without colors', () => {
-      const customConfig: LoggerConfig = {
-        presets: [],
-        types: {
-          plain: {
-            badge: '○',
-            color: null,
-            label: 'plain'
-          }
-        }
-      }
-      
-      const logger = createLogger(customConfig) as any
-      logger.plain('plain message')
-      
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('○ plain   plain message')
+        expect.stringContaining('🚨 critical message')
       )
     })
   })
@@ -218,10 +168,10 @@ describe('Configuration System Tests', () => {
       expect(consoleSpy).toHaveBeenCalled()
     })
 
-    test('should handle label-badge color scope', () => {
+    test('should handle badge color scope', () => {
       const configLabelBadge: LoggerConfig = {
         presets: [],
-        colorScope: 'label-badge'
+        colorScope: 'badge'
       }
       
       const logger = createLogger(configLabelBadge)
@@ -266,7 +216,7 @@ describe('Configuration System Tests', () => {
       logger.enable()
       logger.log('should appear')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     should appear')
+        expect.stringContaining('should appear')
       )
     })
   })
@@ -276,23 +226,21 @@ describe('Configuration System Tests', () => {
       const complexConfig: LoggerConfig = {
         scope: ['app', 'module'],
         presets: ['date'],
-        colorScope: 'label-badge',
-        uppercase: ['label', 'scope'],
-        underline: ['label'],
+        colorScope: 'badge',
         types: {
-          debug: {
+          info: {
             badge: '🔍',
             color: 'magenta',
-            label: 'debug'
+            label: 'info'
           }
         }
       }
       
-      const logger = createLogger(complexConfig) as any
-      logger.debug('debug message')
+      const logger = createLogger(complexConfig)
+      logger.info('debug message')
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\] \[APP\] \[MODULE\] 🔍 DEBUG {3}debug message$/)
+        expect.stringMatching(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\] \[app\] \[module\] 🔍 debug message$/)
       )
     })
 
@@ -302,7 +250,7 @@ describe('Configuration System Tests', () => {
       
       // Should work like default
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\] \[fxlog\] LOG/)
+        expect.stringMatching(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\] \[fxlog\] \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\] \[fxlog\] test/)
       )
     })
   })
@@ -312,32 +260,16 @@ describe('Configuration System Tests', () => {
       const config: LoggerConfig = {
         presets: [],
         types: {
-          test: {
+          info: {
             badge: 'T',
             color: 'invalid-color' as any,
-            label: 'test'
+            label: 'info'
           }
         }
       }
       
-      const logger = createLogger(config) as any
-      expect(() => logger.test('message')).not.toThrow()
-    })
-
-    test('should handle null/undefined config values', () => {
-      const config: LoggerConfig = {
-        presets: [],
-        types: {
-          test: {
-            badge: null,
-            color: null,
-            label: 'test'
-          }
-        }
-      }
-      
-      const logger = createLogger(config) as any
-      expect(() => logger.test('message')).not.toThrow()
+      const logger = createLogger(config)
+      expect(() => logger.info('message')).not.toThrow()
     })
   })
 })

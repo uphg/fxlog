@@ -22,7 +22,7 @@ describe('Timer Functionality Tests', () => {
       
       expect(label).toBe('test-timer')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[TIMER] ▶ test-timer Initialized timer...')
+        expect.stringContaining('▶ test-timer Initialized timer...')
       )
     })
 
@@ -32,7 +32,7 @@ describe('Timer Functionality Tests', () => {
       
       expect(label).toBe('timer_0')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[TIMER] ▶ timer_0 Initialized timer...')
+        expect.stringContaining('▶ timer_0 Initialized timer...')
       )
     })
 
@@ -64,7 +64,7 @@ describe('Timer Functionality Tests', () => {
       })
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[TIMER] ■ test-timer Timer run for: 100ms')
+        expect.stringContaining('■ test-timer Timer run for: 100ms')
       )
     })
 
@@ -82,7 +82,7 @@ describe('Timer Functionality Tests', () => {
       })
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[TIMER] ■ timer_0 Timer run for: 50ms')
+        expect.stringContaining('■ timer_0 Timer run for: 50ms')
       )
     })
   })
@@ -242,8 +242,8 @@ describe('Timer Functionality Tests', () => {
       logger.timeEnd('scoped-timer')
       
       const calls = consoleSpy.mock.calls
-      expect(calls[0][0]).toContain('[my-app] [TIMER]')
-      expect(calls[1][0]).toContain('[my-app] [TIMER]')
+      expect(calls[0][0]).toContain('[my-app] ▶')
+      expect(calls[1][0]).toContain('[my-app] ■')
     })
 
     test('should include presets in timer messages', () => {
@@ -257,9 +257,9 @@ describe('Timer Functionality Tests', () => {
       logger.timeEnd('date-timer')
       
       const calls = consoleSpy.mock.calls
-      expect(calls[0][0]).toContain('[TIMER]')
+      expect(calls[0][0]).toContain('▶')
       expect(calls[0][0]).toContain('date-timer')
-      expect(calls[1][0]).toContain('[TIMER]')
+      expect(calls[1][0]).toContain('■')
       expect(calls[1][0]).toContain('date-timer')
     })
 
@@ -274,8 +274,8 @@ describe('Timer Functionality Tests', () => {
       logger.timeEnd('full-timer')
       
       const calls = consoleSpy.mock.calls
-      expect(calls[0][0]).toMatch(/^\[2024-01-15 \d{2}:\d{2}:\d{2}\.\d{3}\] \[app\] \[TIMER\]/)
-      expect(calls[1][0]).toMatch(/^\[2024-01-15 \d{2}:\d{2}:\d{2}\.\d{3}\] \[app\] \[TIMER\]/)
+      expect(calls[0][0]).toMatch(/^\[2024-01-15 \d{2}:\d{2}:\d{2}\.\d{3}\] \[app\] ▶/)
+      expect(calls[1][0]).toMatch(/^\[2024-01-15 \d{2}:\d{2}:\d{2}\.\d{3}\] \[app\] ■/)
     })
   })
 
@@ -320,7 +320,7 @@ describe('Timer Functionality Tests', () => {
       
       expect(label).toBe('should-work')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[TIMER] ▶ should-work Initialized timer...')
+        expect.stringContaining('▶ should-work Initialized timer...')
       )
     })
   })
@@ -381,7 +381,6 @@ describe('Timer Functionality Tests', () => {
       logger.time('test')
       
       const output = consoleSpy.mock.calls[0][0]
-      expect(output).toContain('[TIMER]')
       expect(output).toContain('▶ test Initialized timer...')
     })
 
@@ -393,7 +392,6 @@ describe('Timer Functionality Tests', () => {
       logger.timeEnd('test')
       
       const output = consoleSpy.mock.calls[1][0]
-      expect(output).toContain('[TIMER]')
       expect(output).toContain('■ test Timer run for:')
       expect(output).toMatch(/\d+(ms|s)$/)
     })

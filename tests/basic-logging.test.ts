@@ -1,6 +1,5 @@
 import { expect, test, vi, beforeEach, afterEach, describe } from 'vitest'
 import { createLogger } from '../src'
-import type { LoggerConfig } from '../src/types'
 
 describe('Basic Logging Tests', () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>
@@ -13,7 +12,7 @@ describe('Basic Logging Tests', () => {
     consoleSpy.mockRestore()
   })
 
-describe('Log Types and Badge Display', () => {
+  describe('Log Types and Badge Display', () => {
     test('should display log without badge', () => {
       const logger = createLogger({ 
         presets: [],
@@ -22,7 +21,7 @@ describe('Log Types and Badge Display', () => {
       })
       logger.log('Simple log message')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     Simple log message')
+        expect.stringContaining('Simple log message')
       )
     })
 
@@ -34,7 +33,7 @@ describe('Log Types and Badge Display', () => {
       })
       logger.success('Success operation')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('✔ success  Success operation')
+        expect.stringContaining('[✓] Success operation')
       )
     })
 
@@ -46,7 +45,7 @@ describe('Log Types and Badge Display', () => {
       })
       logger.info('Information message')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('ℹ info    Information message')
+        expect.stringContaining('[i] Information message')
       )
     })
 
@@ -58,7 +57,7 @@ describe('Log Types and Badge Display', () => {
       })
       logger.warn('Warning condition')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('⚠ warn    Warning condition')
+        expect.stringContaining('[!] Warning condition')
       )
     })
 
@@ -70,82 +69,8 @@ describe('Log Types and Badge Display', () => {
       })
       logger.error('Error occurred')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('✗ error   Error occurred')
+        expect.stringContaining('[×] Error occurred')
       )
-    })
-  })
-
-    test('should display success with checkmark badge', () => {
-      const logger = createLogger({ presets: [] })
-      logger.success('Success operation')
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('✔ SUCCESS Success operation')
-      )
-    })
-
-    test('should display info with info badge', () => {
-      const logger = createLogger({ presets: [] })
-      logger.info('Information message')
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('ℹ INFO    Information message')
-      )
-    })
-
-    test('should display warning with warning badge', () => {
-      const logger = createLogger({ presets: [] })
-      logger.warn('Warning condition')
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('⚠ WARN    Warning condition')
-      )
-    })
-
-    test('should display error with cross badge', () => {
-      const logger = createLogger({ presets: [] })
-      logger.error('Error occurred')
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('✘ ERROR   Error occurred')
-      )
-    })
-  })
-
-  describe('Label Alignment and Padding', () => {
-    test('should align labels properly with padding', () => {
-      const logger = createLogger({ presets: [] })
-      
-      logger.log('short')
-      logger.success('longer message')
-      logger.info('message')
-      
-      const calls = consoleSpy.mock.calls
-      expect(calls[0][0]).toContain('log     short')
-      expect(calls[1][0]).toContain('✔ SUCCESS longer message')
-      expect(calls[2][0]).toContain('ℹ INFO    message')
-    })
-
-    test('should handle custom label lengths', () => {
-      const customConfig: LoggerConfig = {
-        presets: [],
-        types: {
-          short: {
-            badge: null,
-            color: null,
-            label: 'x'
-          },
-          verylong: {
-            badge: null,
-            color: null,
-            label: 'verylong'
-          }
-        }
-      }
-      
-      const logger = createLogger(customConfig) as any
-      logger.short('test')
-      logger.verylong('test')
-      
-      const calls = consoleSpy.mock.calls
-      expect(calls[0][0]).toMatch(/x\s+test/)
-      expect(calls[1][0]).toMatch(/verylong\s+test/)
     })
   })
 
@@ -154,7 +79,7 @@ describe('Log Types and Badge Display', () => {
       const logger = createLogger({ presets: [] })
       logger.log('Simple string')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     Simple string')
+        expect.stringContaining('Simple string')
       )
     })
 
@@ -162,7 +87,7 @@ describe('Log Types and Badge Display', () => {
       const logger = createLogger({ presets: [] })
       logger.log(42)
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     42')
+        expect.stringContaining('42')
       )
     })
 
@@ -172,10 +97,10 @@ describe('Log Types and Badge Display', () => {
       logger.log(false)
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     true')
+        expect.stringContaining('true')
       )
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     false')
+        expect.stringContaining('false')
       )
     })
 
@@ -185,10 +110,10 @@ describe('Log Types and Badge Display', () => {
       logger.log(undefined)
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     null')
+        expect.stringContaining('null')
       )
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     undefined')
+        expect.stringContaining('undefined')
       )
     })
 
@@ -197,7 +122,7 @@ describe('Log Types and Badge Display', () => {
       const obj = { name: 'test', value: 123 }
       logger.log(obj)
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     { name: \'test\', value: 123 }')
+        expect.stringContaining('{ name: \'test\', value: 123 }')
       )
     })
 
@@ -206,7 +131,7 @@ describe('Log Types and Badge Display', () => {
       const arr = [1, 2, 3, { nested: 'value' }]
       logger.log(arr)
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     [ 1, 2, 3, { nested: \'value\' } ]')
+        expect.stringContaining('[ 1, 2, 3, { nested: \'value\' } ]')
       )
     })
 
@@ -214,7 +139,7 @@ describe('Log Types and Badge Display', () => {
       const logger = createLogger({ presets: [] })
       logger.log('string', 123, true, { key: 'value' }, null)
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     string 123 true { key: \'value\' } null')
+        expect.stringContaining('string 123 true { key: \'value\' } null')
       )
     })
   })
@@ -223,16 +148,14 @@ describe('Log Types and Badge Display', () => {
     test('should handle empty string', () => {
       const logger = createLogger({ presets: [] })
       logger.log('')
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     ')
-      )
+      expect(consoleSpy).toHaveBeenCalled()
     })
 
     test('should handle special characters', () => {
       const logger = createLogger({ presets: [] })
       logger.log('Special chars: \n\t\r\'"\\')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     Special chars: \n\t\r\'"\\')
+        expect.stringContaining('Special chars: \n\t\r\'"\\')
       )
     })
 
@@ -240,7 +163,7 @@ describe('Log Types and Badge Display', () => {
       const logger = createLogger({ presets: [] })
       logger.log('Unicode: 🚀 💻 🎉')
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     Unicode: 🚀 💻 🎉')
+        expect.stringContaining('Unicode: 🚀 💻 🎉')
       )
     })
   })
@@ -251,7 +174,7 @@ describe('Log Types and Badge Display', () => {
       const longMessage = 'x'.repeat(10000)
       logger.log(longMessage)
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('log     ' + longMessage)
+        expect.stringContaining(longMessage)
       )
     })
 

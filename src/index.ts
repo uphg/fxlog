@@ -36,20 +36,6 @@ const defaultConfig: LoggerConfig = {
   }
 }
 
-function test() {
-  const logger = createLogger()
-
-  logger.time()
-  logger.log('普通消息')
-  logger.success('普通消息')
-  logger.info('普通消息')
-  logger.warn('普通消息')
-  logger.error('普通消息')
-  logger.timeEnd()
-}
-
-test()
-
 export function createLogger(userConfig: LoggerConfig = {}) {
   const config = merge({}, defaultConfig, userConfig)
   const currentScope: string | string[] | undefined = config.scope;
@@ -69,7 +55,15 @@ export function createLogger(userConfig: LoggerConfig = {}) {
           break
         }
         case 'scope': {
-          value = `[${shouldApplyStyle('scope', config) ? chalk.underline(currentScope) : currentScope}]`;
+          if (currentScope) {
+            const scopes = Array.isArray(currentScope) ? currentScope : [currentScope]
+            const scopeValues = scopes.map(scope => 
+              shouldApplyStyle('scope', config) ? chalk.underline(scope) : scope
+            )
+            value = scopeValues.map(s => `[${s}]`).join(' ')
+          } else {
+            value = null
+          }
           break
         }
         case 'badge': {
@@ -81,19 +75,26 @@ export function createLogger(userConfig: LoggerConfig = {}) {
         }
       }
 
-      const userPrefix = typeof config.prefix == 'function' ? config.prefix() : config.prefix
-
-      if (userPrefix?.length) {
-        const values = Array.isArray(userPrefix) ? userPrefix : [userPrefix]
-        const prefixs = values.map(item => chalk.underline(item))
-        prefixParts.push(...prefixs)
-      }
-
       if (!value) return
       prefixParts.push(value)
     })
 
+    // Handle user prefix first
+    const userPrefix = buildUserPrefix()
+    userPrefix?.length && prefixParts.push(...userPrefix)
+
     return prefixParts
+  }
+
+  function buildUserPrefix() {
+    // Handle user prefix first
+    const userPrefix = typeof config.prefix == 'function' ? config.prefix() : config.prefix
+    if (userPrefix?.length) {
+      const values = Array.isArray(userPrefix) ? userPrefix : [userPrefix]
+      const hasUnderLine = shouldApplyStyle('prefix', config)
+      const prefixs = hasUnderLine ? values.map(item => chalk.underline(item)) : values
+      return prefixs
+    }
   }
 
   function buildMessage(type: string, ...args: LogArgument[]) {
@@ -177,7 +178,7 @@ export function createLogger(userConfig: LoggerConfig = {}) {
       const span = Date.now() - startTime
       timers.delete(timerLabel);
       
-      const prefixParts = buildPrefix('timeEnd');
+      const prefixParts = buildPrefix();
       const messages = [
         ...prefixParts,
         chalk.red('■'),
@@ -257,7 +258,7 @@ function formatDate(): string {
 }
 
 
-function shouldApplyStyle(element: 'date' | 'scope' | 'label' | 'message' | 'prefix' | 'suffix', config: Record<string, unknown>): boolean {
-  const configList = config.underline as Array<'date' | 'scope' | 'label' | 'message' | 'prefix' | 'suffix'> || [];
+function shouldApplyStyle(element: 'date' | 'scope' | 'message' | 'prefix' | 'suffix', config: Record<string, unknown>): boolean {
+  const configList = config.underline as Array<'date' | 'scope' | 'message' | 'prefix' | 'suffix'> || [];
   return configList.includes(element);
 }
